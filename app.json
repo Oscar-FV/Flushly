@@ -36,6 +36,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "86da8db4-2b30-4697-812c-104c67ff7c0d"
+      }
+    },
+    "owner": "oscar-fv"
   }
 }
