@@ -1,5 +1,6 @@
 import React from 'react';
 import { Camera, MapView } from '@maplibre/maplibre-react-native';
+import { useColorScheme } from 'nativewind';
 
 interface MapProps {
   setIsMapReady: React.Dispatch<boolean>;
@@ -8,9 +9,13 @@ interface MapProps {
 }
 
 export default function Map({ setError, setHasStyle, setIsMapReady }: MapProps) {
+  const { colorScheme } = useColorScheme();
+  const key = process.env.EXPO_PUBLIC_MAPTILER_KEY;
+
   const styleURL = React.useMemo(() => {
-    return `https://api.maptiler.com/maps/basic-v2/style.json?key=${process.env.EXPO_PUBLIC_MAPTILER_KEY}`;
-  }, []);
+    return `https://api.maptiler.com/maps/basic-v2-${colorScheme}/style.json?key=${key}`;
+  }, [colorScheme, key]);
+
   return (
     <MapView
       style={{ flex: 1 }}
