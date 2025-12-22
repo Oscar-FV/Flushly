@@ -1,6 +1,6 @@
 import { LucideProps } from 'lucide-react-native';
 import React, { ForwardRefExoticComponent } from 'react';
-import { Pressable, PressableProps } from 'react-native';
+import { Platform, Pressable, PressableProps } from 'react-native';
 import { Icon } from './ui/icon';
 import { Text } from './ui/text';
 
@@ -19,13 +19,17 @@ export default function NavButton({
   ...props
 }: NavButtonProps) {
 
+  const containerIdleStyle = Platform.OS === 'android' ? style.containerAndroidIdle : style.containerIdle;
+  const containerFoucusedStyle = Platform.OS === 'android' ? style.containerAndroidFocused : style.containerFocused;
+
   return (
+
     <Pressable
       {...props}
       accessibilityRole="button"
       className={[
         style.container,
-        isFocused ? style.containerFocused : style.containerIdle,
+        isFocused ? containerFoucusedStyle : containerIdleStyle,
         className,
       ].join(' ')}
     >
@@ -60,7 +64,9 @@ const style = {
 
   // States
   containerFocused: 'bg-primary  shadow-md shadow-primary/70',
-  containerIdle: 'bg-background shadow-sm shadow-black/20',
+  containerIdle: 'bg-background shadow-sm shadow-black/20 dark:shadow-white/20',
+  containerAndroidFocused: 'bg-primary',
+  containerAndroidIdle: 'bg-secondary',
 
   iconFocused: 'text-primary-foreground',
   iconIdle: 'text-muted-foreground',
