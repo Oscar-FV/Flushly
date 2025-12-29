@@ -3,17 +3,26 @@ import { Animated, StyleSheet, View } from 'react-native';
 import Map from '../components/map/Map';
 import { MapError } from '../components/map-loader.tsx/map-error';
 import { MapLoader } from '../components/map-loader.tsx/map-loader';
+import { useMapLoadState } from '../hooks/useMapLoadState';
+import { useUserLocation } from '../hooks/useUserLocation';
 
 export default function MapScreen() {
-  const [isMapReady, setIsMapReady] = React.useState(false);
-  const [hasStyle, setHasStyle] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const mapState = useMapLoadState();
+  const { isLocating, userLocation } = useUserLocation({ onError: mapState.setError });
 
-  const showLoader = !hasStyle && !isMapReady && !error;
+  const showLoader =
+    (!mapState.hasStyle && !mapState.isMapReady && !mapState.error) ||
+    (isLocating && !mapState.error);
 
   return (
     <View className="flex-1">
-      <Map setError={setError} setHasStyle={setHasStyle} setIsMapReady={setIsMapReady} />
+      <Map
+        userLocation={userLocation}
+        onWillStartLoadingMap={mapState.onWillStartLoadingMap}
+        onDidFinishLoadingMap={mapState.onDidFinishLoadingMap}
+        onDidFailLoadingMap={mapState.onDidFailLoadingMap}
+        onDidFinishLoadingStyle={mapState.onDidFinishLoadingStyle}
+      />
 
       {showLoader && (
         <Animated.View pointerEvents="auto" style={[styles.loader]}>
@@ -21,9 +30,9 @@ export default function MapScreen() {
         </Animated.View>
       )}
 
-      {!!error && (
+      {!!mapState.error && (
         <View pointerEvents="auto" style={styles.loader}>
-          <MapError message={error} />
+          <MapError message={mapState.error} />
         </View>
       )}
     </View>
