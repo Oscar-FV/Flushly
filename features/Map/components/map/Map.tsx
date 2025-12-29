@@ -1,26 +1,40 @@
 import React from 'react';
-import { Camera, CircleLayer, MapView, ShapeSource } from '@maplibre/maplibre-react-native';
-import type { FeatureCollection, Point } from 'geojson';
+import { Camera, CircleLayer, MapView, ShapeSource, type CameraRef, type MapViewRef, type RegionPayload } from '@maplibre/maplibre-react-native';
+import type { Feature, FeatureCollection, Point } from 'geojson';
 import { useColorScheme } from 'nativewind';
 import { THEME } from '@/lib/theme';
 
 interface MapProps {
   userLocation: [number, number] | null;
+  isFollowingUser: boolean;
+  mapRef: React.RefObject<MapViewRef | null>;
+  onRegionDidChange?: (feature: Feature<Point, RegionPayload>) => void;
   onWillStartLoadingMap: () => void;
   onDidFinishLoadingMap: () => void;
   onDidFailLoadingMap: () => void;
   onDidFinishLoadingStyle: () => void;
+  onUserInteraction?: () => void;
+  recenterToken?: number;
 }
 
 export default function Map({
   userLocation,
+  isFollowingUser,
+  mapRef,
+  onRegionDidChange,
   onWillStartLoadingMap,
   onDidFinishLoadingMap,
   onDidFailLoadingMap,
   onDidFinishLoadingStyle,
+  onUserInteraction,
+  recenterToken = 0,
 }: MapProps) {
   const { colorScheme } = useColorScheme();
   const key = process.env.EXPO_PUBLIC_MAPTILER_KEY;
+  // Imperative camera control for initial center and recenter actions.
+  const cameraRef = React.useRef<CameraRef>(null);
+  // Only auto-center once when the user location first arrives.
+  const [hasCenteredOnUser, setHasCenteredOnUser] = React.useState(false);
 
   const styleURL = React.useMemo(() => {
     return `https://api.maptiler.com/maps/basic-v2-${colorScheme}/style.json?key=${key}`;
@@ -51,8 +65,47 @@ export default function Map({
     locationStrockeColor: colorScheme === 'dark' ? THEME.dark.primaryForeground : THEME.light.primaryForeground,
   };
 
+  // Initial camera snap to the user location (only once).
+  React.useEffect(() => {
+    if (!userLocation || hasCenteredOnUser) {
+      return;
+    }
+
+    cameraRef.current?.setCamera({
+      centerCoordinate: userLocation,
+      zoomLevel: 14,
+      animationMode: 'moveTo',
+      animationDuration: 0,
+    });
+    setHasCenteredOnUser(true);
+  }, [hasCenteredOnUser, userLocation]);
+
+  // Triggered by the floating button to recenter on demand.
+  React.useEffect(() => {
+    if (!userLocation || !recenterToken) {
+      return;
+    }
+
+    cameraRef.current?.setCamera({
+      centerCoordinate: userLocation,
+      animationMode: 'flyTo',
+      animationDuration: 500,
+    });
+  }, [recenterToken, userLocation]);
+
+  // If the user starts panning/zooming, notify parent to disable follow mode.
+  const handleRegionChange = React.useCallback(
+    (feature: Feature<Point, RegionPayload>) => {
+      if (feature?.properties?.isUserInteraction) {
+        onUserInteraction?.();
+      }
+    },
+    [onUserInteraction]
+  );
+
   return (
     <MapView
+      ref={mapRef}
       style={{ flex: 1 }}
       mapStyle={styleURL}
       logoEnabled={false}
@@ -61,16 +114,23 @@ export default function Map({
       scrollEnabled
       rotateEnabled={false}
       pitchEnabled={false}
+      onRegionWillChange={handleRegionChange}
+      onRegionIsChanging={handleRegionChange}
       onWillStartLoadingMap={onWillStartLoadingMap}
       onDidFinishLoadingMap={onDidFinishLoadingMap}
       onDidFailLoadingMap={onDidFailLoadingMap}
-      onDidFinishLoadingStyle={onDidFinishLoadingStyle}>
+      onDidFinishLoadingStyle={onDidFinishLoadingStyle}
+      onRegionDidChange={onRegionDidChange}>
       <Camera
-        zoomLevel={14}
+        ref={cameraRef}
         minZoomLevel={14}
         maxZoomLevel={20}
-        centerCoordinate={userLocation ?? [-99.1332, 19.4326]}
-        animationMode="moveTo"
+        defaultSettings={{
+          centerCoordinate: [-99.1332, 19.4326],
+          zoomLevel: 14,
+        }}
+        // Follow the user only when enabled (disabled on manual map interaction).
+        followUserLocation={isFollowingUser && !!userLocation}
       />
       {userLocationFeature && (
         <ShapeSource id="user-location" shape={userLocationFeature}>
