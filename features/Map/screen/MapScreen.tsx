@@ -14,6 +14,8 @@ export default function MapScreen() {
     (!mapState.hasStyle && !mapState.isMapReady && !mapState.error) ||
     (isLocating && !mapState.error);
 
+    console.log('map screen render');
+
   return (
     <View className="flex-1">
       <Map

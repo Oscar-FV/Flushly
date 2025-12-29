@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { Tabs, TabList, TabTrigger, TabSlot } from 'expo-router/ui';
+import { Tabs, TabList, TabTrigger, TabSlot, defaultTabsSlotRender } from 'expo-router/ui';
 import * as React from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,9 +12,22 @@ export default function TabLayout() {
   const { bottom } = useSafeAreaInsets();
   const { colorScheme } = useColorScheme();
 
+  const renderTabScreen = React.useCallback(
+    (...args: Parameters<typeof defaultTabsSlotRender>) => {
+      const [descriptor, state] = args;
+      const shouldKeepAlive = descriptor.route.name === 'index';
+      const options = shouldKeepAlive
+        ? { ...descriptor.options, unmountOnBlur: false }
+        : { ...descriptor.options, unmountOnBlur: true };
+
+      return defaultTabsSlotRender({ ...descriptor, options }, state);
+    },
+    []
+  );
+
   return (
     <Tabs className="relative">
-      <TabSlot />
+      <TabSlot renderFn={renderTabScreen} />
       <LinearGradient
         colors={[
           THEME[colorScheme ?? 'light'].backgroundTransparent,

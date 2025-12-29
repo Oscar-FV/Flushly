@@ -3,6 +3,7 @@ import * as React from 'react';
 import { View } from 'react-native';
 
 export default function ExploreScreen() {
+
   return (
     <View className="flex-1 items-center justify-center p-6">
       <Text className="text-lg font-semibold">Explore</Text>
