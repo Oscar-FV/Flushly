@@ -1,8 +1,19 @@
 import React from 'react';
-import { Camera, CircleLayer, MapView, ShapeSource, type CameraRef, type MapViewRef, type RegionPayload } from '@maplibre/maplibre-react-native';
+import {
+  Camera,
+  CircleLayer,
+  Images,
+  MapView,
+  ShapeSource,
+  SymbolLayer,
+  type CameraRef,
+  type MapViewRef,
+  type RegionPayload,
+} from '@maplibre/maplibre-react-native';
 import type { Feature, FeatureCollection, Point } from 'geojson';
 import { useColorScheme } from 'nativewind';
 import { THEME } from '@/lib/theme';
+import type { Toilet } from '../../types/toilet';
 
 interface MapProps {
   userLocation: [number, number] | null;
@@ -13,8 +24,10 @@ interface MapProps {
   onDidFinishLoadingMap: () => void;
   onDidFailLoadingMap: () => void;
   onDidFinishLoadingStyle: () => void;
+  onDidFinishRenderingMapFully?: () => void;
   onUserInteraction?: () => void;
   recenterToken?: number;
+  toilets?: Toilet[];
 }
 
 export default function Map({
@@ -26,8 +39,10 @@ export default function Map({
   onDidFinishLoadingMap,
   onDidFailLoadingMap,
   onDidFinishLoadingStyle,
+  onDidFinishRenderingMapFully,
   onUserInteraction,
   recenterToken = 0,
+  toilets = [],
 }: MapProps) {
   const { colorScheme } = useColorScheme();
   const key = process.env.EXPO_PUBLIC_MAPTILER_KEY;
@@ -64,6 +79,27 @@ export default function Map({
     locationColor: colorScheme === 'dark' ? THEME.dark.primary : THEME.light.primary,
     locationStrockeColor: colorScheme === 'dark' ? THEME.dark.primaryForeground : THEME.light.primaryForeground,
   };
+
+  const toiletsFeature = React.useMemo<FeatureCollection<Point> | null>(() => {
+    if (!toilets.length) {
+      return null;
+    }
+
+    return {
+      type: 'FeatureCollection',
+      features: toilets.map((toilet) => ({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [toilet.location.longitude, toilet.location.latitude],
+        },
+        properties: {
+          id: toilet.id,
+          kind: toilet.kind,
+        },
+      })),
+    };
+  }, [toilets]);
 
   // Initial camera snap to the user location (only once).
   React.useEffect(() => {
@@ -114,12 +150,14 @@ export default function Map({
       scrollEnabled
       rotateEnabled={false}
       pitchEnabled={false}
+      regionDidChangeDebounceTime={800}
       onRegionWillChange={handleRegionChange}
       onRegionIsChanging={handleRegionChange}
       onWillStartLoadingMap={onWillStartLoadingMap}
       onDidFinishLoadingMap={onDidFinishLoadingMap}
       onDidFailLoadingMap={onDidFailLoadingMap}
       onDidFinishLoadingStyle={onDidFinishLoadingStyle}
+      onDidFinishRenderingMapFully={onDidFinishRenderingMapFully}
       onRegionDidChange={onRegionDidChange}>
       <Camera
         ref={cameraRef}
@@ -132,6 +170,12 @@ export default function Map({
         // Follow the user only when enabled (disabled on manual map interaction).
         followUserLocation={isFollowingUser && !!userLocation}
       />
+      <Images
+        id="toilets-images"
+        images={{
+          'toilet-pin': require('@/assets/pins/toilet-pin.png')
+        }}
+      />
       {userLocationFeature && (
         <ShapeSource id="user-location" shape={userLocationFeature}>
           <CircleLayer
@@ -141,6 +185,20 @@ export default function Map({
               circleColor: userLocationColors.locationColor,
               circleStrokeColor: userLocationColors.locationStrockeColor,
               circleStrokeWidth: 2,
+            }}
+          />
+        </ShapeSource>
+      )}
+      {toiletsFeature && (
+        <ShapeSource id="toilets" shape={toiletsFeature}>
+          <SymbolLayer
+            id="toilets-symbol"
+            style={{
+              iconImage: 'toilet-pin',
+              iconSize: ['interpolate', ['linear'], ['zoom'], 14, 0.12, 18, 0.22],
+              iconAnchor: 'bottom',
+              iconAllowOverlap: true,
+              iconIgnorePlacement: true,
             }}
           />
         </ShapeSource>

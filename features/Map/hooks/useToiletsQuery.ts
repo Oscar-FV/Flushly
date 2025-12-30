@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { buildToiletsQuery, fetchToilets, type ToiletsQueryFilters } from '../services/overpass';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { buildToiletsQuery, fetchToilets, normalizeOverpassToToilets, type ToiletsQueryFilters } from '../services/overpass';
+import type { Toilet } from '../types/toilet';
 
 export type ToiletsQueryOptions = {
   radiusMeters?: number;
@@ -18,11 +19,24 @@ export function useToiletsQuery(options: ToiletsQueryOptions = {}) {
     wheelchair: options.filters?.wheelchair ?? true,
   };
 
-  const coordsKey = location ? [location.latitude, location.longitude] : null;
+  const coordsKey = location
+    ? [roundTo(location.latitude, 5), roundTo(location.longitude, 5), roundTo(radiusMeters, 25)]
+    : null;
 
-  return useQuery({
+  return useQuery<Toilet[]>({
     queryKey: ['toilets', coordsKey, radiusMeters, filters],
-    queryFn: () => fetchToilets(buildToiletsQuery(location!.latitude, location!.longitude, radiusMeters, filters)),
+    staleTime: 1000 * 60 * 60,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const response = await fetchToilets(
+        buildToiletsQuery(location!.latitude, location!.longitude, radiusMeters, filters)
+      );
+      return normalizeOverpassToToilets(response);
+    },
     enabled: Boolean(location) && (options.enabled ?? true),
   });
+}
+
+function roundTo(value: number, step: number) {
+  return Math.round(value / step) * step;
 }

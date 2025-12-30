@@ -1,6 +1,7 @@
 import React from 'react';
 import type { MapViewRef } from '@maplibre/maplibre-react-native';
 import { useDebouncedCallback } from '@tanstack/react-pacer';
+import type { LatLng } from '../types/toilet';
 
 type UseViewportRadiusOptions = {
   onViewportRadiusChange?: (radiusMeters: number) => void;
@@ -13,6 +14,9 @@ export function useViewportRadius({
 }: UseViewportRadiusOptions) {
   const mapRef = React.useRef<MapViewRef>(null);
   const [viewportRadius, setViewportRadius] = React.useState<number | null>(null);
+  const [viewportCenter, setViewportCenter] = React.useState<LatLng | null>(null);
+  const lastCenterRef = React.useRef<LatLng | null>(null);
+  const lastRadiusRef = React.useRef<number | null>(null);
 
   // Approximate viewport radius using center-to-corner distance.
   const updateViewportRadius = React.useCallback(async () => {
@@ -33,7 +37,28 @@ export function useViewportRadius({
 
       // Haversine returns meters on the Earth's surface.
       const radiusMeters = haversineMeters(centerLat, centerLon, ne[1], ne[0]);
+      const nextCenter = { latitude: centerLat, longitude: centerLon };
+
+      const centerMovedMeters = lastCenterRef.current
+        ? haversineMeters(
+            lastCenterRef.current.latitude,
+            lastCenterRef.current.longitude,
+            nextCenter.latitude,
+            nextCenter.longitude
+          )
+        : Infinity;
+      const radiusDelta = lastRadiusRef.current
+        ? Math.abs(lastRadiusRef.current - radiusMeters)
+        : Infinity;
+
+      if (centerMovedMeters < 25 && radiusDelta < 25) {
+        return;
+      }
+
+      lastCenterRef.current = nextCenter;
+      lastRadiusRef.current = radiusMeters;
       setViewportRadius(radiusMeters);
+      setViewportCenter(nextCenter);
       onViewportRadiusChange?.(radiusMeters);
     } catch {
       return;
@@ -45,7 +70,7 @@ export function useViewportRadius({
     updateViewportRadius();
   }, { wait: debounceMs });
 
-  return { mapRef, onRegionDidChange, viewportRadius };
+  return { mapRef, onRegionDidChange, viewportCenter, viewportRadius };
 }
 
 // Great-circle distance in meters between two lat/lon points.
