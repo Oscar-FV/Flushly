@@ -29,8 +29,6 @@ export default function MapScreen() {
   const [isFollowingUser, setIsFollowingUser] = React.useState(true);
   // Increment to trigger a one-off recenter animation.
   const [recenterToken, setRecenterToken] = React.useState(0);
-  // Tracks a brief "rendering" state after new data arrives.
-  const [isRenderingPins, setIsRenderingPins] = React.useState(false);
   const { selectedToilet, handleToiletPress } = useToiletBottomSheet();
 
   const coordinates =
@@ -47,21 +45,7 @@ export default function MapScreen() {
       mapState.isMapReady && mapState.hasStyle && debouncedCenter && debouncedRadius
     ),
   });
-
-  React.useEffect(() => {
-    if (!toiletsQuery.dataUpdatedAt) {
-      return;
-    }
-
-    setIsRenderingPins(true);
-    const timer = setTimeout(() => {
-      setIsRenderingPins(false);
-    }, 500);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [toiletsQuery.dataUpdatedAt]);
+  const toilets = React.useMemo(() => toiletsQuery.data ?? [], [toiletsQuery.data]);
 
   const showLoader =
     (!mapState.hasStyle && !mapState.isMapReady && !mapState.error) ||
@@ -91,7 +75,7 @@ export default function MapScreen() {
         onDidFinishLoadingStyle={mapState.onDidFinishLoadingStyle}
         onUserInteraction={handleUserInteraction}
         recenterToken={recenterToken}
-        toilets={toiletsQuery.data ?? []}
+        toilets={toilets}
         onToiletPress={handleToiletPress}
       />
 
@@ -107,7 +91,7 @@ export default function MapScreen() {
         </View>
       )}
 
-      {(toiletsQuery.isFetching || isRenderingPins) && (
+      {(toiletsQuery.isFetching && !showLoader) && (
         <Badge
           style={[styles.pending, { top: top + 12 }]}
           variant="secondary"

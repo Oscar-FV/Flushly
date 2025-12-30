@@ -10,11 +10,35 @@ import {
   type MapViewRef,
   type RegionPayload,
   type OnPressEvent,
+  type SymbolLayerStyle,
 } from '@maplibre/maplibre-react-native';
 import type { Feature, FeatureCollection, Point } from 'geojson';
 import { useColorScheme } from 'nativewind';
 import { THEME } from '@/lib/theme';
 import type { Toilet } from '../../types/toilet';
+
+const MAP_VIEW_STYLE = { flex: 1 };
+const ATTRIBUTION_POSITION = { bottom: 8, right: 8 };
+const TOILET_IMAGES = {
+  'toilet-pin': require('@/assets/pins/toilet-pin.png'),
+};
+const TOILETS_ICON_SIZE = [
+  'interpolate',
+  ['linear'],
+  ['zoom'],
+  14,
+  0.12,
+  18,
+  0.22,
+] as unknown as SymbolLayerStyle['iconSize'];
+
+const TOILETS_SYMBOL_STYLE: SymbolLayerStyle = {
+  iconImage: 'toilet-pin',
+  iconSize: TOILETS_ICON_SIZE,
+  iconAnchor: 'bottom',
+  iconAllowOverlap: true,
+  iconIgnorePlacement: true,
+};
 
 interface MapProps {
   userLocation: [number, number] | null;
@@ -32,7 +56,7 @@ interface MapProps {
   onToiletPress?: (toilet: Toilet) => void;
 }
 
-export default function Map({
+function Map({
   userLocation,
   isFollowingUser,
   mapRef,
@@ -52,7 +76,8 @@ export default function Map({
   // Imperative camera control for initial center and recenter actions.
   const cameraRef = React.useRef<CameraRef>(null);
   // Only auto-center once when the user location first arrives.
-  const [hasCenteredOnUser, setHasCenteredOnUser] = React.useState(false);
+  const hasCenteredOnUserRef = React.useRef(false);
+  const hasNotifiedInteractionRef = React.useRef(false);
 
   const styleURL = React.useMemo(() => {
     return `https://api.maptiler.com/maps/basic-v2-${colorScheme}/style.json?key=${key}`;
@@ -78,10 +103,25 @@ export default function Map({
     };
   }, [userLocation]);
 
-  const userLocationColors = {
-    locationColor: colorScheme === 'dark' ? THEME.dark.primary : THEME.light.primary,
-    locationStrockeColor: colorScheme === 'dark' ? THEME.dark.primaryForeground : THEME.light.primaryForeground,
-  };
+  const userLocationColors = React.useMemo(() => {
+    return {
+      locationColor: colorScheme === 'dark' ? THEME.dark.primary : THEME.light.primary,
+      locationStrockeColor:
+        colorScheme === 'dark'
+          ? THEME.dark.primaryForeground
+          : THEME.light.primaryForeground,
+    };
+  }, [colorScheme]);
+
+  const userLocationStyle = React.useMemo(
+    () => ({
+      circleRadius: 7,
+      circleColor: userLocationColors.locationColor,
+      circleStrokeColor: userLocationColors.locationStrockeColor,
+      circleStrokeWidth: 2,
+    }),
+    [userLocationColors]
+  );
 
   const toiletsFeature = React.useMemo<FeatureCollection<Point> | null>(() => {
     if (!toilets.length) {
@@ -106,7 +146,7 @@ export default function Map({
 
   // Initial camera snap to the user location (only once).
   React.useEffect(() => {
-    if (!userLocation || hasCenteredOnUser) {
+    if (!userLocation || hasCenteredOnUserRef.current) {
       return;
     }
 
@@ -116,8 +156,8 @@ export default function Map({
       animationMode: 'moveTo',
       animationDuration: 0,
     });
-    setHasCenteredOnUser(true);
-  }, [hasCenteredOnUser, userLocation]);
+    hasCenteredOnUserRef.current = true;
+  }, [userLocation]);
 
   // Triggered by the floating button to recenter on demand.
   React.useEffect(() => {
@@ -135,11 +175,20 @@ export default function Map({
   // If the user starts panning/zooming, notify parent to disable follow mode.
   const handleRegionChange = React.useCallback(
     (feature: Feature<Point, RegionPayload>) => {
-      if (feature?.properties?.isUserInteraction) {
+      if (feature?.properties?.isUserInteraction && !hasNotifiedInteractionRef.current) {
+        hasNotifiedInteractionRef.current = true;
         onUserInteraction?.();
       }
     },
     [onUserInteraction]
+  );
+
+  const handleRegionDidChange = React.useCallback(
+    (feature: Feature<Point, RegionPayload>) => {
+      hasNotifiedInteractionRef.current = false;
+      onRegionDidChange?.(feature);
+    },
+    [onRegionDidChange]
   );
 
   const handleToiletPress = React.useCallback(
@@ -161,10 +210,10 @@ export default function Map({
   return (
     <MapView
       ref={mapRef}
-      style={{ flex: 1 }}
+      style={MAP_VIEW_STYLE}
       mapStyle={styleURL}
       logoEnabled={false}
-      attributionPosition={{ bottom: 8, right: 8 }}
+      attributionPosition={ATTRIBUTION_POSITION}
       zoomEnabled
       scrollEnabled
       rotateEnabled={false}
@@ -177,7 +226,7 @@ export default function Map({
       onDidFailLoadingMap={onDidFailLoadingMap}
       onDidFinishLoadingStyle={onDidFinishLoadingStyle}
       onDidFinishRenderingMapFully={onDidFinishRenderingMapFully}
-      onRegionDidChange={onRegionDidChange}>
+      onRegionDidChange={handleRegionDidChange}>
       <Camera
         ref={cameraRef}
         minZoomLevel={14}
@@ -191,37 +240,20 @@ export default function Map({
       />
       <Images
         id="toilets-images"
-        images={{
-          'toilet-pin': require('@/assets/pins/toilet-pin.png')
-        }}
+        images={TOILET_IMAGES}
       />
       {userLocationFeature && (
         <ShapeSource id="user-location" shape={userLocationFeature}>
-          <CircleLayer
-            id="user-location-dot"
-            style={{
-              circleRadius: 7,
-              circleColor: userLocationColors.locationColor,
-              circleStrokeColor: userLocationColors.locationStrockeColor,
-              circleStrokeWidth: 2,
-            }}
-          />
+          <CircleLayer id="user-location-dot" style={userLocationStyle} />
         </ShapeSource>
       )}
       {toiletsFeature && (
         <ShapeSource id="toilets" shape={toiletsFeature} onPress={handleToiletPress}>
-          <SymbolLayer
-            id="toilets-symbol"
-            style={{
-              iconImage: 'toilet-pin',
-              iconSize: ['interpolate', ['linear'], ['zoom'], 14, 0.12, 18, 0.22],
-              iconAnchor: 'bottom',
-              iconAllowOverlap: true,
-              iconIgnorePlacement: true,
-            }}
-          />
+          <SymbolLayer id="toilets-symbol" style={TOILETS_SYMBOL_STYLE} />
         </ShapeSource>
       )}
     </MapView>
   );
 }
+
+export default React.memo(Map);
