@@ -18,6 +18,8 @@ export type ToiletTags = {
   operator?: string;
 };
 
+export type ToiletBadge = 'public' | 'free' | 'paid' | 'private' | 'wheelchair';
+
 export type ToiletRatingSummary = {
   average: number;
   count: number;
@@ -42,6 +44,7 @@ export type Toilet = {
   title: string;
   subtitle?: string;
   kind: ToiletKind;
+  badges?: ToiletBadge[];
 
   /** filtros/atributos */
   tags: ToiletTags;

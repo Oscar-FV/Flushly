@@ -1,4 +1,4 @@
-import type { LatLng, Toilet, ToiletKind, ToiletTags } from '../types/toilet';
+import type { LatLng, Toilet, ToiletBadge, ToiletKind, ToiletTags } from '../types/toilet';
 
 export type OverpassElement = {
   id: number;
@@ -73,6 +73,7 @@ export function normalizeOverpassToToilets(response: OverpassResponse): Toilet[]
 
       const kind: ToiletKind = rawTags.access === 'customers' ? 'business' : 'public';
       const title = rawTags.name ?? 'Bano publico';
+      const badges = getToiletBadges(kind, tags);
 
       const toilet: Toilet = {
         id: `osm:${element.type}:${element.id}`,
@@ -80,6 +81,7 @@ export function normalizeOverpassToToilets(response: OverpassResponse): Toilet[]
         location,
         title,
         kind,
+        badges,
         tags,
         meta: {
           osm: {
@@ -105,4 +107,41 @@ function getElementLocation(element: OverpassElement): LatLng | null {
   }
 
   return null;
+}
+
+function getToiletBadges(kind: ToiletKind, tags: ToiletTags): ToiletBadge[] {
+  const variants: ToiletBadge[] = [];
+  const access = tags.access?.toLowerCase();
+  const fee = tags.fee?.toLowerCase();
+  const wheelchair = tags.wheelchair?.toLowerCase();
+
+  if (access) {
+    if (['public', 'yes', 'permissive'].includes(access)) {
+      variants.push('public');
+    }
+    if (['private', 'customers', 'no'].includes(access)) {
+      variants.push('private');
+    }
+  } else {
+    if (kind === 'public') {
+      variants.push('public');
+    } else if (kind === 'business') {
+      variants.push('private');
+    }
+  }
+
+  if (fee) {
+    if (['yes', 'true', 'paid'].includes(fee)) {
+      variants.push('paid');
+    }
+    if (['no', 'false', 'free'].includes(fee)) {
+      variants.push('free');
+    }
+  }
+
+  if (wheelchair && ['yes', 'limited', 'designated'].includes(wheelchair)) {
+    variants.push('wheelchair');
+  }
+
+  return Array.from(new Set(variants));
 }

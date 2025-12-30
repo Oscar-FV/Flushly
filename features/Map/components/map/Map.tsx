@@ -9,6 +9,7 @@ import {
   type CameraRef,
   type MapViewRef,
   type RegionPayload,
+  type OnPressEvent,
 } from '@maplibre/maplibre-react-native';
 import type { Feature, FeatureCollection, Point } from 'geojson';
 import { useColorScheme } from 'nativewind';
@@ -28,6 +29,7 @@ interface MapProps {
   onUserInteraction?: () => void;
   recenterToken?: number;
   toilets?: Toilet[];
+  onToiletPress?: (toilet: Toilet) => void;
 }
 
 export default function Map({
@@ -43,6 +45,7 @@ export default function Map({
   onUserInteraction,
   recenterToken = 0,
   toilets = [],
+  onToiletPress,
 }: MapProps) {
   const { colorScheme } = useColorScheme();
   const key = process.env.EXPO_PUBLIC_MAPTILER_KEY;
@@ -139,6 +142,22 @@ export default function Map({
     [onUserInteraction]
   );
 
+  const handleToiletPress = React.useCallback(
+    (event: OnPressEvent) => {
+      const feature = event.features?.[0];
+      const toiletId = feature?.properties?.id;
+      if (typeof toiletId !== 'string') {
+        return;
+      }
+
+      const selected = toilets.find((toilet) => toilet.id === toiletId);
+      if (selected) {
+        onToiletPress?.(selected);
+      }
+    },
+    [onToiletPress, toilets]
+  );
+
   return (
     <MapView
       ref={mapRef}
@@ -190,7 +209,7 @@ export default function Map({
         </ShapeSource>
       )}
       {toiletsFeature && (
-        <ShapeSource id="toilets" shape={toiletsFeature}>
+        <ShapeSource id="toilets" shape={toiletsFeature} onPress={handleToiletPress}>
           <SymbolLayer
             id="toilets-symbol"
             style={{

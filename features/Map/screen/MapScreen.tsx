@@ -13,15 +13,13 @@ import { LocateFixed } from 'lucide-react-native';
 import { useToiletsQuery } from '../hooks/useToiletsQuery';
 import { useDebouncedValue } from '@tanstack/react-pacer';
 import { Text } from '@/components/ui/text';
-import { THEME } from '@/lib/theme';
-import { useColorScheme } from 'nativewind';
 import { Badge } from '@/components/ui/badge';
 import { LoadingIcon } from '@/components/ui/loading-icon';
+import ToiletBottomSheet from '../bottom-sheets/ToiletBottomSheet';
+import { useToiletBottomSheet } from '../hooks/useToiletBottomSheet';
 
 export default function MapScreen() {
   const { bottom, top } = useSafeAreaInsets();
-  const { colorScheme } = useColorScheme();
-  const theme = THEME[colorScheme ?? 'light'];
   const mapState = useMapLoadState();
   // Fetch and track user location for map + queries.
   const { isLocating, userLocation } = useUserLocation({ onError: mapState.setError });
@@ -33,6 +31,7 @@ export default function MapScreen() {
   const [recenterToken, setRecenterToken] = React.useState(0);
   // Tracks a brief "rendering" state after new data arrives.
   const [isRenderingPins, setIsRenderingPins] = React.useState(false);
+  const { selectedToilet, handleToiletPress } = useToiletBottomSheet();
 
   const coordinates =
     viewportCenter ??
@@ -93,6 +92,7 @@ export default function MapScreen() {
         onUserInteraction={handleUserInteraction}
         recenterToken={recenterToken}
         toilets={toiletsQuery.data ?? []}
+        onToiletPress={handleToiletPress}
       />
 
       {showLoader && (
@@ -130,6 +130,8 @@ export default function MapScreen() {
           </Button>
         </View>
       )}
+
+      <ToiletBottomSheet selectedToilet={selectedToilet} />
     </View>
   );
 }
