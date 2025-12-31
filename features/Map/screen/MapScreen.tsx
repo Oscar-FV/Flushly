@@ -4,95 +4,85 @@ import Map from '../components/map/Map';
 import { MapError } from '../components/map-loader.tsx/map-error';
 import { MapLoader } from '../components/map-loader.tsx/map-loader';
 import { useMapLoadState } from '../hooks/useMapLoadState';
-import { useUserLocation } from '../hooks/useUserLocation';
 import { useViewportRadius } from '../hooks/useViewportRadius';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LocateFixed } from 'lucide-react-native';
 import { useToiletsQuery } from '../hooks/useToiletsQuery';
-import { useDebouncedValue } from '@tanstack/react-pacer';
 import { Text } from '@/components/ui/text';
-import { THEME } from '@/lib/theme';
-import { useColorScheme } from 'nativewind';
 import { Badge } from '@/components/ui/badge';
 import { LoadingIcon } from '@/components/ui/loading-icon';
+import ToiletBottomSheet from '../bottom-sheets/ToiletBottomSheet';
+import { useToiletBottomSheet } from '../hooks/useToiletBottomSheet';
+import type { LatLng } from '../types/toilet';
+import { useLocationStore } from '@/context/location-store/useLocationStore';
 
 export default function MapScreen() {
   const { bottom, top } = useSafeAreaInsets();
-  const { colorScheme } = useColorScheme();
-  const theme = THEME[colorScheme ?? 'light'];
   const mapState = useMapLoadState();
-  // Fetch and track user location for map + queries.
-  const { isLocating, userLocation } = useUserLocation({ onError: mapState.setError });
+  const isLocating = useLocationStore((state) => state.isLocating);
+  const userLocation = useLocationStore((state) => state.userLocation);
+  const locationError = useLocationStore((state) => state.error);
+  const initialUserLocationRef = React.useRef<LatLng | null>(
+    useLocationStore.getState().userLocation
+  );
+  if (!initialUserLocationRef.current && userLocation) {
+    initialUserLocationRef.current = userLocation;
+  }
+  const [cameraKeySeed, setCameraKeySeed] = React.useState(0);
+  const [recenterLocation, setRecenterLocation] = React.useState<LatLng | null>(null);
+  const cameraDefaultLocation = recenterLocation ?? initialUserLocationRef.current;
   // Tracks visible radius for queries driven by map viewport.
-  const { mapRef, onRegionDidChange, viewportCenter, viewportRadius } = useViewportRadius({});
-  // When true, the camera follows the user; user pan/zoom disables it.
-  const [isFollowingUser, setIsFollowingUser] = React.useState(true);
-  // Increment to trigger a one-off recenter animation.
-  const [recenterToken, setRecenterToken] = React.useState(0);
-  // Tracks a brief "rendering" state after new data arrives.
-  const [isRenderingPins, setIsRenderingPins] = React.useState(false);
+  const { mapRef, onRegionDidChange, refreshViewport, viewportCenter, viewportRadius } =
+    useViewportRadius({});
+  const { selectedToilet, handleToiletPress } = useToiletBottomSheet();
 
-  const coordinates =
-    viewportCenter ??
-    (userLocation ? { latitude: userLocation[1], longitude: userLocation[0] } : null);
-
-  const [debouncedCenter] = useDebouncedValue(coordinates, { wait: 800 });
-  const [debouncedRadius] = useDebouncedValue(viewportRadius, { wait: 800 });
-
+  const queryCenter = viewportCenter ?? userLocation;
   const toiletsQuery = useToiletsQuery({
-    coordinates: debouncedCenter,
-    radiusMeters: debouncedRadius ?? 800,
-    enabled: Boolean(
-      mapState.isMapReady && mapState.hasStyle && debouncedCenter && debouncedRadius
-    ),
+    coordinates: queryCenter,
+    radiusMeters: viewportRadius ?? 800,
+    enabled: Boolean(mapState.isMapReady && mapState.hasStyle && queryCenter),
   });
-
-  React.useEffect(() => {
-    if (!toiletsQuery.dataUpdatedAt) {
-      return;
-    }
-
-    setIsRenderingPins(true);
-    const timer = setTimeout(() => {
-      setIsRenderingPins(false);
-    }, 500);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [toiletsQuery.dataUpdatedAt]);
+  const toilets = React.useMemo(() => toiletsQuery.data ?? [], [toiletsQuery.data]);
 
   const showLoader =
     (!mapState.hasStyle && !mapState.isMapReady && !mapState.error) ||
     (isLocating && !mapState.error);
-
-  // User manually moved the map; stop following until they tap the button.
-  const handleUserInteraction = React.useCallback(() => {
-    setIsFollowingUser(false);
-  }, []);
-
-  // Re-enable following and trigger a recenter.
+  const errorToShow = mapState.error ?? locationError;
+  
   const handleRecenter = React.useCallback(() => {
-    setIsFollowingUser(true);
-    setRecenterToken((value) => value + 1);
+    if (!userLocation) {
+      return;
+    }
+
+    setRecenterLocation(userLocation);
+    setCameraKeySeed((value) => value + 1);
+  }, [userLocation]);
+
+  React.useEffect(() => {
+    const { startTracking, stopTracking } = useLocationStore.getState();
+    startTracking();
+    return () => {
+      stopTracking();
+    };
   }, []);
 
   return (
     <View className="flex-1">
       <Map
         userLocation={userLocation}
-        isFollowingUser={isFollowingUser}
         mapRef={mapRef}
+        cameraDefaultLocation={cameraDefaultLocation}
+        cameraKeySeed={cameraKeySeed}
         onRegionDidChange={onRegionDidChange}
         onWillStartLoadingMap={mapState.onWillStartLoadingMap}
         onDidFinishLoadingMap={mapState.onDidFinishLoadingMap}
         onDidFailLoadingMap={mapState.onDidFailLoadingMap}
         onDidFinishLoadingStyle={mapState.onDidFinishLoadingStyle}
-        onUserInteraction={handleUserInteraction}
-        recenterToken={recenterToken}
-        toilets={toiletsQuery.data ?? []}
+        onDidFinishRenderingMapFully={refreshViewport}
+        toilets={toilets}
+        onToiletPress={handleToiletPress}
       />
 
       {showLoader && (
@@ -101,13 +91,13 @@ export default function MapScreen() {
         </Animated.View>
       )}
 
-      {!!mapState.error && (
+      {!!errorToShow && (
         <View pointerEvents="auto" style={styles.loader}>
-          <MapError message={mapState.error} />
+          <MapError message={errorToShow} />
         </View>
       )}
 
-      {(toiletsQuery.isFetching || isRenderingPins) && (
+      {toiletsQuery.isFetching && !showLoader && (
         <Badge
           style={[styles.pending, { top: top + 12 }]}
           variant="secondary"
@@ -117,19 +107,13 @@ export default function MapScreen() {
         </Badge>
       )}
 
-      {/* Floating recenter button shown when not following the user. */}
-      {userLocation && !isFollowingUser && (
-        <View pointerEvents="auto" style={[styles.recenter, { bottom: bottom + 96 }]}>
-          <Button
-            size="icon"
-            variant="secondary"
-            onPress={handleRecenter}
-            accessibilityLabel="Center map"
-            className="rounded-full">
-            <Icon as={LocateFixed} size={24} />
-          </Button>
-        </View>
-      )}
+      <RecenterButton
+        visible={!showLoader}
+        bottomOffset={bottom + 96}
+        onPress={handleRecenter}
+      />
+
+      <ToiletBottomSheet selectedToilet={selectedToilet} />
     </View>
   );
 }
@@ -146,4 +130,33 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignSelf: 'center',
   },
+});
+
+type RecenterButtonProps = {
+  visible: boolean;
+  bottomOffset: number;
+  onPress: () => void;
+};
+
+const RecenterButton = React.memo(function RecenterButton({
+  visible,
+  bottomOffset,
+  onPress,
+}: RecenterButtonProps) {
+  if (!visible) {
+    return null;
+  }
+
+  return (
+    <View pointerEvents="auto" style={[styles.recenter, { bottom: bottomOffset }]}>
+      <Button
+        size="icon"
+        variant="secondary"
+        onPress={onPress}
+        accessibilityLabel="Center map"
+        className="rounded-full">
+        <Icon as={LocateFixed} size={24} />
+      </Button>
+    </View>
+  );
 });
