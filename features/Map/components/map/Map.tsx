@@ -6,7 +6,6 @@ import {
   MapView,
   ShapeSource,
   SymbolLayer,
-  type CameraRef,
   type MapViewRef,
   type RegionPayload,
   type OnPressEvent,
@@ -15,7 +14,7 @@ import {
 import type { Feature, FeatureCollection, Point } from 'geojson';
 import { useColorScheme } from 'nativewind';
 import { THEME } from '@/lib/theme';
-import type { Toilet } from '../../types/toilet';
+import type { LatLng, Toilet } from '../../types/toilet';
 
 const MAP_VIEW_STYLE = { flex: 1 };
 const ATTRIBUTION_POSITION = { bottom: 8, right: 8 };
@@ -41,43 +40,49 @@ const TOILETS_SYMBOL_STYLE: SymbolLayerStyle = {
 };
 
 interface MapProps {
-  userLocation: [number, number] | null;
-  isFollowingUser: boolean;
+  userLocation: LatLng | null;
   mapRef: React.RefObject<MapViewRef | null>;
+  cameraDefaultLocation?: LatLng | null;
+  cameraKeySeed?: number;
   onRegionDidChange?: (feature: Feature<Point, RegionPayload>) => void;
   onWillStartLoadingMap: () => void;
   onDidFinishLoadingMap: () => void;
   onDidFailLoadingMap: () => void;
   onDidFinishLoadingStyle: () => void;
   onDidFinishRenderingMapFully?: () => void;
-  onUserInteraction?: () => void;
-  recenterToken?: number;
   toilets?: Toilet[];
   onToiletPress?: (toilet: Toilet) => void;
 }
 
 function Map({
   userLocation,
-  isFollowingUser,
   mapRef,
+  cameraDefaultLocation = null,
+  cameraKeySeed = 0,
   onRegionDidChange,
   onWillStartLoadingMap,
   onDidFinishLoadingMap,
   onDidFailLoadingMap,
   onDidFinishLoadingStyle,
   onDidFinishRenderingMapFully,
-  onUserInteraction,
-  recenterToken = 0,
   toilets = [],
   onToiletPress,
 }: MapProps) {
   const { colorScheme } = useColorScheme();
   const key = process.env.EXPO_PUBLIC_MAPTILER_KEY;
-  // Imperative camera control for initial center and recenter actions.
-  const cameraRef = React.useRef<CameraRef>(null);
-  // Only auto-center once when the user location first arrives.
-  const hasCenteredOnUserRef = React.useRef(false);
-  const hasNotifiedInteractionRef = React.useRef(false);
+  const cameraDefaults = React.useMemo(() => {
+    if (!cameraDefaultLocation) {
+      return undefined;
+    }
+    return {
+      centerCoordinate: [
+        cameraDefaultLocation.longitude,
+        cameraDefaultLocation.latitude,
+      ] as [number, number],
+      zoomLevel: 14,
+    };
+  }, [cameraDefaultLocation]);
+  const cameraKey = `${cameraKeySeed}-${cameraDefaultLocation ? 'user' : 'default'}`;
 
   const styleURL = React.useMemo(() => {
     return `https://api.maptiler.com/maps/basic-v2-${colorScheme}/style.json?key=${key}`;
@@ -95,7 +100,7 @@ function Map({
           type: 'Feature',
           geometry: {
             type: 'Point',
-            coordinates: userLocation,
+            coordinates: [userLocation.longitude, userLocation.latitude],
           },
           properties: {},
         },
@@ -107,9 +112,7 @@ function Map({
     return {
       locationColor: colorScheme === 'dark' ? THEME.dark.primary : THEME.light.primary,
       locationStrockeColor:
-        colorScheme === 'dark'
-          ? THEME.dark.primaryForeground
-          : THEME.light.primaryForeground,
+        colorScheme === 'dark' ? THEME.dark.primaryForeground : THEME.light.primaryForeground,
     };
   }, [colorScheme]);
 
@@ -144,48 +147,8 @@ function Map({
     };
   }, [toilets]);
 
-  // Initial camera snap to the user location (only once).
-  React.useEffect(() => {
-    if (!userLocation || hasCenteredOnUserRef.current) {
-      return;
-    }
-
-    cameraRef.current?.setCamera({
-      centerCoordinate: userLocation,
-      zoomLevel: 14,
-      animationMode: 'moveTo',
-      animationDuration: 0,
-    });
-    hasCenteredOnUserRef.current = true;
-  }, [userLocation]);
-
-  // Triggered by the floating button to recenter on demand.
-  React.useEffect(() => {
-    if (!userLocation || !recenterToken) {
-      return;
-    }
-
-    cameraRef.current?.setCamera({
-      centerCoordinate: userLocation,
-      animationMode: 'flyTo',
-      animationDuration: 500,
-    });
-  }, [recenterToken, userLocation]);
-
-  // If the user starts panning/zooming, notify parent to disable follow mode.
-  const handleRegionChange = React.useCallback(
-    (feature: Feature<Point, RegionPayload>) => {
-      if (feature?.properties?.isUserInteraction && !hasNotifiedInteractionRef.current) {
-        hasNotifiedInteractionRef.current = true;
-        onUserInteraction?.();
-      }
-    },
-    [onUserInteraction]
-  );
-
   const handleRegionDidChange = React.useCallback(
     (feature: Feature<Point, RegionPayload>) => {
-      hasNotifiedInteractionRef.current = false;
       onRegionDidChange?.(feature);
     },
     [onRegionDidChange]
@@ -219,8 +182,6 @@ function Map({
       rotateEnabled={false}
       pitchEnabled={false}
       regionDidChangeDebounceTime={800}
-      onRegionWillChange={handleRegionChange}
-      onRegionIsChanging={handleRegionChange}
       onWillStartLoadingMap={onWillStartLoadingMap}
       onDidFinishLoadingMap={onDidFinishLoadingMap}
       onDidFailLoadingMap={onDidFailLoadingMap}
@@ -228,20 +189,13 @@ function Map({
       onDidFinishRenderingMapFully={onDidFinishRenderingMapFully}
       onRegionDidChange={handleRegionDidChange}>
       <Camera
-        ref={cameraRef}
+        key={cameraKey}
         minZoomLevel={14}
         maxZoomLevel={20}
-        defaultSettings={{
-          centerCoordinate: [-99.1332, 19.4326],
-          zoomLevel: 14,
-        }}
-        // Follow the user only when enabled (disabled on manual map interaction).
-        followUserLocation={isFollowingUser && !!userLocation}
+        defaultSettings={cameraDefaults}
+        followUserLocation={false}
       />
-      <Images
-        id="toilets-images"
-        images={TOILET_IMAGES}
-      />
+      <Images id="toilets-images" images={TOILET_IMAGES} />
       {userLocationFeature && (
         <ShapeSource id="user-location" shape={userLocationFeature}>
           <CircleLayer id="user-location-dot" style={userLocationStyle} />

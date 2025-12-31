@@ -51,7 +51,7 @@ export function useViewportRadius({
         ? Math.abs(lastRadiusRef.current - radiusMeters)
         : Infinity;
 
-      if (centerMovedMeters < 25 && radiusDelta < 25) {
+      if (centerMovedMeters < 25 && radiusDelta < 250) {
         return;
       }
 
@@ -70,7 +70,11 @@ export function useViewportRadius({
     updateViewportRadius();
   }, { wait: debounceMs });
 
-  return { mapRef, onRegionDidChange, viewportCenter, viewportRadius };
+  const refreshViewport = React.useCallback(() => {
+    updateViewportRadius();
+  }, [updateViewportRadius]);
+
+  return { mapRef, onRegionDidChange, refreshViewport, viewportCenter, viewportRadius };
 }
 
 // Great-circle distance in meters between two lat/lon points.
