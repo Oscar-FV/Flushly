@@ -13,6 +13,13 @@ module.exports = {
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
+        rating: {
+          cleanliness: 'hsl(var(--rating-cleanliness))',
+          availability: 'hsl(var(--rating-availability))',
+          privacy: 'hsl(var(--rating-privacy))',
+          maintenance: 'hsl(var(--rating-maintenance))',
+          accessibility: 'hsl(var(--rating-accessibility))',
+        },
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',

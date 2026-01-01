@@ -45,6 +45,13 @@
     --chart-3: 43 96% 56%;  /* yellow (ratings ⭐) */
     --chart-4: 0 84% 60%;   /* red */
     --chart-5: 270 80% 60%; /* purple */
+
+    /* category ratings */
+    --rating-cleanliness: 158 64% 34%;
+    --rating-availability: 210 70% 45%;
+    --rating-privacy: 270 50% 40%;
+    --rating-maintenance: 35 85% 55%;
+    --rating-accessibility: 175 55% 40%;
   }
 
   .dark:root {
@@ -87,5 +94,12 @@
     --chart-3: 43 96% 56%;  /* yellow */
     --chart-4: 0 72% 51%;   /* red */
     --chart-5: 280 85% 65%; /* purple */
+
+    /* Category ratings (DARK) */
+    --rating-cleanliness: 158 64% 45%;
+    --rating-availability: 210 70% 60%;
+    --rating-privacy: 270 50% 55%;
+    --rating-maintenance: 35 85% 65%;
+    --rating-accessibility: 175 55% 55%;
   }
 }
