@@ -1,76 +1,70 @@
+import React from 'react';
+import { Pressable, PressableProps, Platform, StyleSheet } from 'react-native';
+import { ForwardRefExoticComponent } from 'react';
 import { LucideProps } from 'lucide-react-native';
-import React, { ForwardRefExoticComponent } from 'react';
-import { Platform, Pressable, PressableProps } from 'react-native';
 import { Icon } from './ui/icon';
-import { Text } from './ui/text';
+import { NAV_BUTTON_SIZES } from '@/constants/nav-constants';
 
 export interface NavButtonProps extends PressableProps {
   icon: ForwardRefExoticComponent<LucideProps>;
-  buttonText?: string;
   isFocused?: boolean;
   className?: string;
 }
 
-export default function NavButton({
+export function NavButton({
   icon,
-  buttonText,
+  isFocused = false,
   className = '',
-  isFocused,
+  style,
   ...props
 }: NavButtonProps) {
+  const containerIdle =
+    Platform.OS === 'android' ? stylesNW.containerAndroidIdle : stylesNW.containerIdle;
 
-  const containerIdleStyle = Platform.OS === 'android' ? style.containerAndroidIdle : style.containerIdle;
-  const containerFoucusedStyle = Platform.OS === 'android' ? style.containerAndroidFocused : style.containerFocused;
+  const containerFocused =
+    Platform.OS === 'android'
+      ? stylesNW.containerAndroidFocused
+      : stylesNW.containerFocused;
 
   return (
-
     <Pressable
       {...props}
       accessibilityRole="button"
-      className={[
-        style.container,
-        isFocused ? containerFoucusedStyle : containerIdleStyle,
-        className,
-      ].join(' ')}
+      className={[stylesNW.base, isFocused ? containerFocused : containerIdle, className].join(' ')}
+      style={[styles.centerBox]}
     >
       <Icon
         as={icon}
         className={[
-          style.icon,
-          isFocused ? style.iconFocused : style.iconIdle,
+          stylesNW.icon,
+          isFocused ? stylesNW.iconFocused : stylesNW.iconIdle,
         ].join(' ')}
+        style={styles.centerSelf}
       />
-
-      {buttonText && (
-        <Text
-          className={[
-            style.text,
-            isFocused ? style.textFocused : style.textIdle,
-          ].join(' ')}
-        >
-          {buttonText}
-        </Text>
-      )}
     </Pressable>
   );
 }
 
-const style = {
-  // Base
-  container:
-    'group shrink-0 flex-row items-center !justify-center gap-4 rounded-full p-3',
-  icon: 'w-5 h-5',
-  text: 'text-sm font-medium',
+const styles = StyleSheet.create({
+  centerBox: {
+    width: NAV_BUTTON_SIZES.navIconWidth,
+    height: NAV_BUTTON_SIZES.navIconWidth,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  centerSelf: {
+    alignSelf: 'center',
+  },
+});
 
-  // States
-  containerFocused: 'bg-primary  shadow-md shadow-primary/70',
+const stylesNW = {
+  base: 'rounded-full', 
+  icon: 'w-5 h-5',
+  containerFocused: 'bg-primary shadow-md shadow-primary/70',
   containerIdle: 'bg-background shadow-sm shadow-black/20 dark:shadow-white/20',
   containerAndroidFocused: 'bg-primary',
   containerAndroidIdle: 'bg-secondary',
-
   iconFocused: 'text-primary-foreground',
   iconIdle: 'text-muted-foreground',
-
-  textFocused: 'text-primary-foreground',
-  textIdle: 'text-muted-foreground',
 };

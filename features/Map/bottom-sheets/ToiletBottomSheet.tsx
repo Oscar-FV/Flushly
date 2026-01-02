@@ -25,9 +25,8 @@ const ToiletBottomSheet: React.FC<ToiletBottomSheetProps> = ({ selectedToilet })
   const theme = THEME[colorScheme ?? 'light'];
   const resolvedSnapPoints = React.useMemo(() => ['35%', '50%', '70%'], []);
 
-  const { data: address, isFetching } = useReverseGeocoding(
-    selectedToilet?.location || { latitude: 0, longitude: 0 }
-  );
+  const location = selectedToilet?.location;
+  const { data: address, isFetching } = useReverseGeocoding(location);
 
   const badgeVariants = selectedToilet?.badges ?? [];
 
@@ -61,7 +60,11 @@ const ToiletBottomSheet: React.FC<ToiletBottomSheetProps> = ({ selectedToilet })
               <View className="flex flex-row items-start gap-1">
                 <Icon as={MapPin} size={20} className="text-muted-foreground" />
                 <Text style={styles.address} className="text-base text-muted-foreground">
-                  {address ? address : 'No address available.'}
+                  {isFetching
+                    ? 'Loading address...'
+                    : address
+                      ? address
+                      : 'No address available.'}
                 </Text>
               </View>
 
@@ -112,4 +115,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ToiletBottomSheet;
+export default React.memo(ToiletBottomSheet);
