@@ -9,6 +9,7 @@ import RecentSearchCard from '@/features/Explore/components/recent-search-card';
 import { Separator } from '@/components/ui/separator';
 import { useTabBarHeight } from '@/context/tab-bar-height';
 import { NAV_BUTTON_SIZES } from '@/constants/nav-constants';
+import InputWithButton from '@/components/ui/input-with-button';
 
 export default function ExploreScreen() {
   const { top, bottom } = useSafeAreaInsets();
@@ -174,7 +175,7 @@ export default function ExploreScreen() {
   return (
     <View className="flex-1 gap-y-4" style={{ paddingTop: top }}>
       <View className="mt-2 px-4">
-        <Input
+        <InputWithButton
           autoFocus
           returnKeyType={'search'}
           className="h-14 py-4"
