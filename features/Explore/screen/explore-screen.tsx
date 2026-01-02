@@ -1,4 +1,4 @@
-import { FlatList, View } from 'react-native';
+import { FlatList, Keyboard, Platform, View } from 'react-native';
 import React, { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Input } from '@/components/ui/input';
@@ -176,6 +176,7 @@ export default function ExploreScreen() {
       <View className="mt-2 px-4">
         <Input
           autoFocus
+          returnKeyType={'search'}
           className="h-14 py-4"
           placeholder={
             showDescription ? 'Search by area, street, or landmark' : 'Where do you need a toilet?'
@@ -199,6 +200,7 @@ export default function ExploreScreen() {
           )}
           ItemSeparatorComponent={() => <Separator />}
           ListFooterComponent={<View style={{ height: effectiveTabBarHeight + 120 }} />}
+          onScrollBeginDrag={Keyboard.dismiss}
         />
       </View>
     </View>
