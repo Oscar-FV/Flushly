@@ -3,16 +3,15 @@ import { Pressable, View } from 'react-native';
 import { MapPin } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { Icon } from '@/components/ui/icon';
+import { SearchItem } from '../types/search-item';
 
 type RecentSearchCardProps = {
-  title: string;
-  subtitle?: string;
+  item: SearchItem
   onPress?: () => void;
 };
 
 export default function RecentSearchCard({
-  title,
-  subtitle,
+  item,
   onPress,
 }: RecentSearchCardProps) {
   return (
@@ -23,9 +22,9 @@ export default function RecentSearchCard({
         <Icon as={MapPin} size={18} className="text-muted-foreground" />
       </View>
       <View className="flex-1">
-        <Text className="text-base font-semibold text-foreground">{title}</Text>
-        {!!subtitle && (
-          <Text className="text-sm text-muted-foreground">{subtitle}</Text>
+        <Text className="text-base font-semibold text-foreground">{item.tittle}</Text>
+        {!!item.details && (
+          <Text className="text-sm text-muted-foreground">{item.details}</Text>
         )}
       </View>
     </Pressable>

@@ -1,209 +1,117 @@
-import { FlatList, Keyboard, Platform, View } from 'react-native';
-import React, { useState } from 'react';
+import { FlatList, Keyboard, View } from 'react-native';
+import React from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Input } from '@/components/ui/input';
 import { ArrowLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Text } from '@/components/ui/text';
 import RecentSearchCard from '@/features/Explore/components/recent-search-card';
 import { Separator } from '@/components/ui/separator';
 import { useTabBarHeight } from '@/context/tab-bar-height';
-import { NAV_BUTTON_SIZES } from '@/constants/nav-constants';
 import InputWithButton from '@/components/ui/input-with-button';
+import { Controller } from 'react-hook-form';
+import { useSearch } from '../hooks/useSearch';
+import { useSearchResults } from '../hooks/useSearchResults';
 
 export default function ExploreScreen() {
   const { top, bottom } = useSafeAreaInsets();
   const router = useRouter();
   const { height: tabBarHeight } = useTabBarHeight();
   const effectiveTabBarHeight = tabBarHeight || bottom + 112;
-  const recentSearches = [
-    {
-      id: 'mx-cdmx-centro',
-      title: 'Centro Historico',
-      subtitle: 'Mexico City, CDMX',
-    },
-    {
-      id: 'mx-polanco',
-      title: 'Polanco',
-      subtitle: 'Av. Presidente Masaryk',
-    },
-    {
-      id: 'mx-bellas-artes',
-      title: 'Palacio de Bellas Artes',
-      subtitle: 'Av. Juarez, CDMX',
-    },
-    {
-      id: 'mx-cdmx-centro',
-      title: 'Centro Historico',
-      subtitle: 'Mexico City, CDMX',
-    },
-    {
-      id: 'mx-polanco',
-      title: 'Polanco',
-      subtitle: 'Av. Presidente Masaryk',
-    },
-    {
-      id: 'mx-bellas-artes',
-      title: 'Palacio de Bellas Artes',
-      subtitle: 'Av. Juarez, CDMX',
-    },
-    {
-      id: 'mx-cdmx-centro',
-      title: 'Centro Historico',
-      subtitle: 'Mexico City, CDMX',
-    },
-    {
-      id: 'mx-polanco',
-      title: 'Polanco',
-      subtitle: 'Av. Presidente Masaryk',
-    },
-    {
-      id: 'mx-bellas-artes',
-      title: 'Palacio de Bellas Artes',
-      subtitle: 'Av. Juarez, CDMX',
-    },
-    {
-      id: 'mx-cdmx-centro',
-      title: 'Centro Historico',
-      subtitle: 'Mexico City, CDMX',
-    },
-    {
-      id: 'mx-polanco',
-      title: 'Polanco',
-      subtitle: 'Av. Presidente Masaryk',
-    },
-    {
-      id: 'mx-bellas-artes',
-      title: 'Palacio de Bellas Artes',
-      subtitle: 'Av. Juarez, CDMX',
-    },
-    {
-      id: 'mx-cdmx-centro',
-      title: 'Centro Historico',
-      subtitle: 'Mexico City, CDMX',
-    },
-    {
-      id: 'mx-polanco',
-      title: 'Polanco',
-      subtitle: 'Av. Presidente Masaryk',
-    },
-    {
-      id: 'mx-bellas-artes',
-      title: 'Palacio de Bellas Artes',
-      subtitle: 'Av. Juarez, CDMX',
-    },
-    {
-      id: 'mx-cdmx-centro',
-      title: 'Centro Historico',
-      subtitle: 'Mexico City, CDMX',
-    },
-    {
-      id: 'mx-polanco',
-      title: 'Polanco',
-      subtitle: 'Av. Presidente Masaryk',
-    },
-    {
-      id: 'mx-bellas-artes',
-      title: 'Palacio de Bellas Artes',
-      subtitle: 'Av. Juarez, CDMX',
-    },
-    {
-      id: 'mx-cdmx-centro',
-      title: 'Centro Historico',
-      subtitle: 'Mexico City, CDMX',
-    },
-    {
-      id: 'mx-polanco',
-      title: 'Polanco',
-      subtitle: 'Av. Presidente Masaryk',
-    },
-    {
-      id: 'mx-bellas-artes',
-      title: 'Palacio de Bellas Artes',
-      subtitle: 'Av. Juarez, CDMX',
-    },
-    {
-      id: 'mx-cdmx-centro',
-      title: 'Centro Historico',
-      subtitle: 'Mexico City, CDMX',
-    },
-    {
-      id: 'mx-polanco',
-      title: 'Polanco',
-      subtitle: 'Av. Presidente Masaryk',
-    },
-    {
-      id: 'mx-bellas-artes',
-      title: 'Palacio de Bellas Artes',
-      subtitle: 'Av. Juarez, CDMX',
-    },
-    {
-      id: 'mx-cdmx-centro',
-      title: 'Centro Historico',
-      subtitle: 'Mexico City, CDMX',
-    },
-    {
-      id: 'mx-polanco',
-      title: 'Polanco',
-      subtitle: 'Av. Presidente Masaryk',
-    },
-    {
-      id: 'mx-bellas-artes',
-      title: 'Palacio de Bellas Artes',
-      subtitle: 'Av. Juarez, CDMX',
-    },
 
-    {
-      id: 'mx-cdmx-centro',
-      title: 'Centro Historico',
-      subtitle: 'Mexico City, CDMX',
-    },
-    {
-      id: 'mx-polanco',
-      title: 'Polanco',
-      subtitle: 'Av. Presidente Masaryk',
-    },
-    {
-      id: 'mx-bellas-artes',
-      title: 'Palacio de Bellas Artes',
-      subtitle: 'Av. Juarez, CDMX',
-    },
-  ];
-
-  const [showDescription, setShowDescription] = useState<boolean>(true);
+  const {
+    control,
+    placeholder,
+    handleFocus,
+    handleBlur,
+    handleSubmitEditing,
+    handleChangeText,
+  } = useSearch();
 
   return (
     <View className="flex-1 gap-y-4" style={{ paddingTop: top }}>
-      <View className="mt-2 px-4">
-        <InputWithButton
-          autoFocus
-          returnKeyType={'search'}
-          className="h-14 py-4"
-          placeholder={
-            showDescription ? 'Search by area, street, or landmark' : 'Where do you need a toilet?'
-          }
-          icon={ArrowLeft}
-          iconProps={{ size: 18 }}
-          iconOnPress={() => router.navigate('/(tabs)')}
-          onFocus={() => setShowDescription(true)}
-          onBlur={() => setShowDescription(false)}
-        />
-      </View>
+      <ExploreSearchInput
+        control={control}
+        placeholder={placeholder}
+        onBackPress={() => router.navigate('/(tabs)')}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onSubmitEditing={handleSubmitEditing}
+        onChangeText={handleChangeText}
+      />
 
-      <View>
-        <Text className="px-4 pb-2 text-base font-semibold text-foreground">Recent places</Text>
-
-        <FlatList
-          data={recentSearches}
-          keyExtractor={(item, i) => item.id + i}
-          renderItem={({ item }) => (
-            <RecentSearchCard title={item.title} subtitle={item.subtitle} />
-          )}
-          ItemSeparatorComponent={() => <Separator />}
-          ListFooterComponent={<View style={{ height: effectiveTabBarHeight + 120 }} />}
-          onScrollBeginDrag={Keyboard.dismiss}
-        />
-      </View>
+      <ExploreResultsList
+        control={control}
+        effectiveTabBarHeight={effectiveTabBarHeight}
+      />
     </View>
   );
 }
+
+const ExploreResultsList = React.memo(function ExploreResultsList({
+  control,
+  effectiveTabBarHeight,
+}: {
+  control: ReturnType<typeof useSearch>['control'];
+  effectiveTabBarHeight: number;
+}) {
+  const { hasSearchValue, listItems } = useSearchResults({ control });
+
+  return (
+    <View>
+      {!hasSearchValue && (
+        <Text className="px-4 pb-2 text-base font-semibold text-foreground">Recent places</Text>
+      )}
+      <FlatList
+        data={listItems}
+        keyExtractor={(item, i) => item.id + i}
+        renderItem={({ item }) => <RecentSearchCard item={item} />}
+        ItemSeparatorComponent={() => <Separator />}
+        ListFooterComponent={<View style={{ height: effectiveTabBarHeight + 120 }} />}
+        onScrollBeginDrag={Keyboard.dismiss}
+      />
+    </View>
+  );
+});
+
+const ExploreSearchInput = React.memo(function ExploreSearchInput({
+  control,
+  placeholder,
+  onBackPress,
+  onFocus,
+  onBlur,
+  onSubmitEditing,
+  onChangeText,
+}: {
+  control: ReturnType<typeof useSearch>['control'];
+  placeholder: string;
+  onBackPress: () => void;
+  onFocus: () => void;
+  onBlur: (fieldOnBlur: () => void) => () => void;
+  onSubmitEditing: () => void;
+  onChangeText: (fieldOnChange: (value: string) => void) => (text: string) => void;
+}) {
+  return (
+    <View className="mt-2 px-4">
+      <Controller
+        control={control}
+        render={({ field: { onChange, onBlur: fieldOnBlur, value } }) => (
+          <InputWithButton
+            autoFocus
+            returnKeyType={'search'}
+            className="h-14 py-4"
+            placeholder={placeholder}
+            icon={ArrowLeft}
+            iconProps={{ size: 18 }}
+            iconOnPress={onBackPress}
+            onFocus={onFocus}
+            onBlur={onBlur(fieldOnBlur)}
+            onSubmitEditing={onSubmitEditing}
+            onChangeText={onChangeText(onChange)}
+            value={value}
+          />
+        )}
+        name="search"
+      />
+    </View>
+  );
+});

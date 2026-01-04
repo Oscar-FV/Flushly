@@ -16,7 +16,10 @@
     "assetBundlePatterns": [
       "**/*"
     ],
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -29,7 +32,10 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
       "package": "com.oscarfv.flushly"
     },
     "web": {
@@ -39,7 +45,8 @@
     },
     "plugins": [
       "expo-router",
-      "@maplibre/maplibre-react-native"
+      "@maplibre/maplibre-react-native",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true
