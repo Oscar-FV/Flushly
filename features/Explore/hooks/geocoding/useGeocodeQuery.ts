@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { geocodeSearch } from '../../services/geocoding';
 import type { SearchItem } from '../../types/search-item';
 import * as Localization from 'expo-localization';
@@ -40,5 +40,6 @@ export function useGeocodeQuery(query: string, options: UseGeocodeQueryOptions =
     },
     enabled: isValid,
     staleTime: 1000 * 60 * 5,
+    placeholderData: keepPreviousData,
   });
 }

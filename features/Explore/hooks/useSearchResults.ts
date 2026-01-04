@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useWatch } from 'react-hook-form';
 import { useDebouncedCallback } from '@tanstack/react-pacer';
-import { useGeocodeQuery } from '../hooks/geocoding/useGeocodeQuery';
+import { useGeocodeQuery } from './geocoding/useGeocodeQuery';
 import { SearchItem } from '../types/search-item';
 import { useSearch } from './useSearch';
 
@@ -21,7 +21,9 @@ export function useSearchResults({
   const debouncedSetSearch = useDebouncedCallback((value: string) => {
     setDebouncedSearch(value);
   }, { wait: debounceMs });
-  const { data: searchItems } = useGeocodeQuery(debouncedSearch, { autocomplete: true });
+  const { data: searchItems, isFetching } = useGeocodeQuery(debouncedSearch, {
+    autocomplete: true,
+  });
   const hasSearchValue = searchValue.trim().length > 0;
   const listItems: SearchItem[] = hasSearchValue ? searchItems ?? [] : recentSearches;
 
@@ -34,5 +36,5 @@ export function useSearchResults({
     debouncedSetSearch(trimmed);
   }, [searchValue, debouncedSetSearch]);
 
-  return { hasSearchValue, listItems };
+  return { hasSearchValue, listItems, isFetching };
 }
